@@ -1,0 +1,26 @@
+# NAMESPACE, REGISTRY and REGISTRY_TOKEN have to be defined in Gitlab CI pipeline secret variables
+
+# Definition of the anchor named build-image-definition that have the main properties for job that will build and push
+.build-image: &build-image-job
+  image: docker
+  tags: 
+    - docker
+  script:
+    - docker build -t $REGISTRY/$NAMESPACE/$IMAGE_NAME $IMAGE_NAME
+    - docker login -u unused -p $REGISTRY_TOKEN $REGISTRY
+    - docker push $REGISTRY/$NAMESPACE/$IMAGE_NAME
+
+# The jobs that based on the anchor build-image-job with IMAGE_NAME as additionnal variables
+build-hello:
+  <<: *build-image-job
+  variables:
+    IMAGE_NAME: hello
+
+build-names:
+  <<: *build-image-job
+  variables:
+    IMAGE_NAME: names
+
+# declare docker:dind (Docker IN Docker) as a service, so that docker command can work on gitlab.com shared runners
+services:
+  - docker:dind    

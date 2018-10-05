@@ -1,0 +1,132 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: names
+  annotations:
+    openshift.io/display-name: "Sample Template names Openshift"
+    description: "A simple names Openshift template project"
+    iconClass: "icon-go-gopher"
+    tags: "sample,wldp"
+  labels:
+    provider: wldp-templates
+    template: "names"    
+labels:
+  provider: wldp-templates
+  template: "names"
+message: |
+  Here you are!
+parameters:
+  - name: SAMPLE_SERVICE_NAME
+    displayName: "Sample Service name"
+    description: "The name of the OpenShift Service exposed for the names"
+    value: names
+    required: true
+  - name: SAMPLE_ROUTE
+    displayName: "Route"
+    description: "The route to access to the names openshift"
+  - name: IMAGE_NS
+    displayName: Image namespace
+    description: The image namespace where the names openshift ImageStream resides.
+    required: true
+  - name: IMAGE_NAME
+    displayName: Image name
+    description: The name of the image to use.
+    required: true
+    value: names
+  - name: IMAGE_REGISTRY
+    displayName: Image registry
+    description: The IP of the registry to find the image.
+    required: true
+  - name: IMAGE_VERSION
+    displayName: Image version
+    description: The version tag of the image to use.
+    required: true
+    value: latest
+objects:
+- kind: Service
+  apiVersion: v1
+  metadata:
+    labels:
+      app: ${SAMPLE_SERVICE_NAME}
+    name: ${SAMPLE_SERVICE_NAME}
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      deploymentconfig: ${SAMPLE_SERVICE_NAME}
+    sessionAffinity: None
+    type: ClusterIP
+- kind: DeploymentConfig
+  apiVersion: v1
+  metadata:
+    labels:
+      app: ${SAMPLE_SERVICE_NAME}
+    name: ${SAMPLE_SERVICE_NAME}
+  spec:
+    replicas: 1
+    selector:
+      app: ${SAMPLE_SERVICE_NAME}
+      deploymentconfig: ${SAMPLE_SERVICE_NAME}
+    strategy:
+      type: Rolling
+      rollingParams:
+        timeoutSeconds: 120
+        maxSurge: 2
+        maxUnavailable: 40%
+    template: 
+      metadata:
+        labels:
+          app: ${SAMPLE_SERVICE_NAME}
+          deploymentconfig: ${SAMPLE_SERVICE_NAME}
+      spec:
+        containers:
+        - image: ${IMAGE_REGISTRY}:5000/${IMAGE_NS}/${IMAGE_NAME}:${IMAGE_VERSION}
+          imagePullPolicy: Always
+          name: names
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          env:
+          - name: PROPERTY_KEY
+            valueFrom:
+              configMapKeyRef:
+                name: name-config
+                key: property.key
+          - name: USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: secret-config
+                key: username
+          - name: PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: secret-config
+                key: password
+          volumeMounts:
+          - name: config-volume
+            mountPath: /opt/app-root/src/config
+          - name: secret-volume
+            mountPath: /opt/app-root/src/secret
+            readOnly: true
+        volumes:
+        - name: config-volume
+          configMap:
+            name: name-config
+        - name: secret-volume
+          secret:
+            secretName: secret-config
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+- kind: Route
+  apiVersion: v1
+  metadata:
+    name: ${SAMPLE_SERVICE_NAME}
+  spec:
+    host: ${SAMPLE_ROUTE}
+    to:
+      kind: Service
+      name: ${SAMPLE_SERVICE_NAME}
