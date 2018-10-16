@@ -15,7 +15,9 @@ LABEL io.k8s.description="WLDP Traning - Step 1 - Hello" \
   io.openshift.tags="wldp,training"
 
 # install required package(s) in a single package manager transaction and clean up just after to reduce image size
-RUN yum install -y --enablerepo=extras epel-release && \
+RUN export http_proxy="http://10.0.3.102:8080" && \
+  export https_proxy="htt p://10.0.3.102:8080" && \  
+  yum install -y --enablerepo=extras epel-release && \
   INSTALL_PKGS="python python2-pip" && \ 
 	yum install -y $INSTALL_PKGS && \
 	rpm -V $INSTALL_PKGS && \

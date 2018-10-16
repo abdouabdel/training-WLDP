@@ -1,16 +1,15 @@
 #!/usr/bin/python
 
 import argparse
-import socketserver
-from http.server import BaseHTTPRequestHandler,HTTPServer,SimpleHTTPRequestHandler
+import BaseHTTPServer
 import os
 import signal
+import SimpleHTTPServer
+import SocketServer
 import sys
 import threading
 
-class HelloServerRequestHandler(SimpleHTTPRequestHandler
-	#SimpleHTTPServer.SimpleHTTPRequestHandler
-	):
+class HelloServerRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
 	def do_GET(self):
 		self.protocol_version = 'HTTP/1.1'
@@ -29,24 +28,21 @@ class HelloServerRequestHandler(SimpleHTTPRequestHandler
 		self.end_headers()
 		self.wfile.write(response)
 
-class ThreadedHTTPServer(socketserver.ThreadingMixIn, HTTPServer
-#BaseHTTPServer.HTTPServer
-):
+class ThreadedHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
 	"""Handle requests in a separate thread."""		
 	daemon_threads = True
 
 def main(args):
-	print("starting hello server (pid=%s)..." % os.getpid())
+	print "starting hello server (pid=%s)..." % os.getpid()
 
 	local_port = args.port # use port given (default is 8080). If 0, pick an available system port
 	address = (args.address, local_port)
 
-	#BaseHTTPServer.
-	HTTPServer.allow_reuse_address = True
+	BaseHTTPServer.HTTPServer.allow_reuse_address = True
 	server = ThreadedHTTPServer(address, HelloServerRequestHandler)
 	
 	ip, local_port = server.server_address # find out what port we were given if 0 was passed
-	print("listening on %s:%s" % (ip, local_port))
+	print "listening on %s:%s" % (ip, local_port)
 
 	def trigger_graceful_shutdown(signum, stack):
 		# trigger shutdown from another thread to avoid deadlock
@@ -55,11 +51,11 @@ def main(args):
 
 	# handle graceful shutdown in a function we can easily bind on signals
 	def graceful_shutdown(signum, stack):
-		print("shutting down server...")
+		print "shutting down server..."
 		try:
 			server.shutdown();
 		finally:
-			print("server shut down.")
+			print "server shut down."
 
 	signal.signal(signal.SIGTERM, trigger_graceful_shutdown)
 	signal.signal(signal.SIGINT, trigger_graceful_shutdown)
@@ -76,7 +72,7 @@ if __name__ == '__main__':
 		help = 'listening address (default: 127.0.0.1)')
 	parser.add_argument(
 		'-p', '--port', metavar = '<port>', type = int,
-		default = 8585, dest = "port",
+		default = 8080, dest = "port",
 		help = 'listening port (8080 if unspecified, random free port if 0)')
 
 	args = parser.parse_args()

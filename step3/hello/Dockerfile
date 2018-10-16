@@ -16,6 +16,8 @@ LABEL io.k8s.description="WLDP Traning - Step 1 - Hello" \
 
 # install required package(s) in a single package manager transaction and clean up just after to reduce image size
 RUN INSTALL_PKGS="python" && \ 
+  export http_proxy="http://10.0.3.102:8080" && \
+  export https_proxy="http://10.0.3.102:8080" && \
 	yum install -y $INSTALL_PKGS && \
 	rpm -V $INSTALL_PKGS && \
 	yum clean all

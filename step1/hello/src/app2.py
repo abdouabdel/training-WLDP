@@ -1,36 +1,16 @@
 #!/usr/bin/python
 
 import argparse
-import BaseHTTPServer
+import socketserver
+from http.server import BaseHTTPRequestHandler,HTTPServer,SimpleHTTPRequestHandler
 import os
 import signal
-import SimpleHTTPServer
-import SocketServer
 import sys
 import threading
-import urllib2
 
-class HelloServerRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
-
-	# way in python to disable proxy auto-detection to make direct connections 
-	NOPROXY_OPENER = urllib2.build_opener(urllib2.ProxyHandler({})) 
-
-	# way in python to rely on system proxy config (env var, ...) 
-	SYSTEMPROXY_OPENER = urllib2.build_opener(urllib2.ProxyHandler()) 
-
-	def get_url(self, url, opener=None): 
-		if (opener == None): 
-			opener = HelloServerRequestHandler.NOPROXY_OPENER 
-		try: 
-			response = opener.open(url) 
-			status = response.getcode(); 
-			res = response.read() 
-			return (200, res) 
-		except urllib2.HTTPError as e: 
-			print "[error] Failed to get '%s': %d %s" % (url, e.code, e.reason) 
-		except: 
-			print "[error] Failed to get '%s': %s" % (url, sys.exc_info()[1]) 
-		return (502, 'Gateway Timeout') 
+class HelloServerRequestHandler(SimpleHTTPRequestHandler
+	#SimpleHTTPServer.SimpleHTTPRequestHandler
+	):
 
 	def do_GET(self):
 		self.protocol_version = 'HTTP/1.1'
@@ -39,35 +19,34 @@ class HelloServerRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 		response = "Not Found"
 		
 		if (self.path == '/'):
-			status, name = self.get_url('http://names:8080/') 
-			#status, name = self.get_url('https://names-wldp-dev-training.193b.starter-ca-central-1.openshiftapps.com/') 
-			response = 'Hello ' + name + '!\n' 
-			
-		if status == 502:
-			response = "Failed to contact 'names' service"
+			response = "Hello World!"
+			status = 200
 
-		response = response.encode("utf8")
+		response = (response + '\n').encode("utf8")
 		self.send_response(status)
 		self.send_header('Content-Type','text/plain; charset=utf-8')
 		self.send_header('Content-Length', len(response) )
 		self.end_headers()
 		self.wfile.write(response)
 
-class ThreadedHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
+class ThreadedHTTPServer(socketserver.ThreadingMixIn, HTTPServer
+#BaseHTTPServer.HTTPServer
+):
 	"""Handle requests in a separate thread."""		
 	daemon_threads = True
 
 def main(args):
-	print "starting hello server (pid=%s)..." % os.getpid()
+	print("starting hello server (pid=%s)..." % os.getpid())
 
 	local_port = args.port # use port given (default is 8080). If 0, pick an available system port
 	address = (args.address, local_port)
 
-	BaseHTTPServer.HTTPServer.allow_reuse_address = True
+	#BaseHTTPServer.
+	HTTPServer.allow_reuse_address = True
 	server = ThreadedHTTPServer(address, HelloServerRequestHandler)
 	
 	ip, local_port = server.server_address # find out what port we were given if 0 was passed
-	print "listening on %s:%s" % (ip, local_port)
+	print("listening on %s:%s" % (ip, local_port))
 
 	def trigger_graceful_shutdown(signum, stack):
 		# trigger shutdown from another thread to avoid deadlock
@@ -76,11 +55,11 @@ def main(args):
 
 	# handle graceful shutdown in a function we can easily bind on signals
 	def graceful_shutdown(signum, stack):
-		print "shutting down server..."
+		print("shutting down server...")
 		try:
 			server.shutdown();
 		finally:
-			print "server shut down."
+			print("server shut down.")
 
 	signal.signal(signal.SIGTERM, trigger_graceful_shutdown)
 	signal.signal(signal.SIGINT, trigger_graceful_shutdown)
@@ -89,7 +68,7 @@ def main(args):
 
 if __name__ == '__main__':
 	sys.tracebacklimit = 0
-
+	
 	parser = argparse.ArgumentParser(description = 'Launch the hello world server')
 	parser.add_argument(
 		'-a', '--address', metavar = '<address>',
@@ -97,7 +76,7 @@ if __name__ == '__main__':
 		help = 'listening address (default: 127.0.0.1)')
 	parser.add_argument(
 		'-p', '--port', metavar = '<port>', type = int,
-		default = 8080, dest = "port",
+		default = 8585, dest = "port",
 		help = 'listening port (8080 if unspecified, random free port if 0)')
 
 	args = parser.parse_args()
